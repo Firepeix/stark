@@ -10,8 +10,9 @@ base64 = "0.21.0"
 chrono = "0.4.23"
 color-eyre = "0.6.2"
 hmac-sha256 = { version = "1.1.6", features = ["traits010"] }
-reqwest = "0.11.14"
+reqwest = { version = "0.11.14", features = ["json"] }
 rsa = "0.8.1"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.92"
 thiserror = "1.0.38"
+tokio = { version = "1.25.0", features = ["full"] }
