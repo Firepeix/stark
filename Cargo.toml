@@ -1,0 +1,17 @@
+[package]
+name = "stark"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+base64 = "0.21.0"
+chrono = "0.4.23"
+color-eyre = "0.6.2"
+hmac-sha256 = { version = "1.1.6", features = ["traits010"] }
+reqwest = "0.11.14"
+rsa = "0.8.1"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.92"
+thiserror = "1.0.38"
