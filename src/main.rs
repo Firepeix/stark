@@ -1,7 +1,12 @@
+use std::time::Duration;
+
 
 #[tokio::main]
 async fn main() {
+    operate().await
+}
+
+async fn operate() {
     color_eyre::install().unwrap();
-    let health = stark::observe().await;
-    dbg!(health);
+    stark::start().await;
 }

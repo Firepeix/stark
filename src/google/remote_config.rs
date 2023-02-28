@@ -1,5 +1,6 @@
 use serde::{Deserialize};
 
+#[derive(Debug)]
 pub(crate) struct Manager {
     config: Config,
     raw: String
@@ -7,7 +8,11 @@ pub(crate) struct Manager {
 
 impl Manager {
     pub(crate) fn get_patient(&self) -> String {
-        self.config.firelink_endpoint().clone()
+        self.config.firelink_endpoint()
+    }
+
+    pub(crate) fn get_skeleton(&self) -> String {
+        self.raw.replace('\n', "").replace('\t', "")
     }
 }
 

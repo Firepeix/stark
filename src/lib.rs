@@ -1,15 +1,16 @@
 
 mod google;
-mod doctor;
-mod surgeon;
 mod hospital;
+mod controller;
 
+
+use controller::CommandMessage;
 pub use google::generate_request_jwt;
-pub use doctor::check_health;
-pub use surgeon::ressurect;
-pub use hospital::observe;
+use tokio::sync::broadcast::channel;
 
-//health - check -> Verifica se esta on -> First Fase Completed
-//ressurect -> Reinicia Processo -> Reinicia o processo Completed
-//obeserve -> Monitora Ngrok
-//propagate -> Atualiza remote config
+
+pub async fn start() {
+    let (dispatcher, listener) = channel::<CommandMessage>(32);
+    let pacient = google::get_manager().await;
+    hospital::enter(pacient, dispatcher, listener).await
+}
