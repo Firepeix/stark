@@ -22,7 +22,7 @@ impl Manager {
     }
 
     pub(crate) fn get_skeleton(&self) -> String {
-        self.raw.replace('\n', "").replace('\t', "")
+        self.raw.replace(['\n', '\t'], "")
     }
 }
 

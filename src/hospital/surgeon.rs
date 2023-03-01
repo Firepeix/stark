@@ -45,15 +45,16 @@ async fn patch(heart: String, pacient: &Manager) -> Result<()> {
 }
 
 fn insert_heart(heart: String, skeleton: String) -> String {
-    let bits = skeleton.split("\"").collect::<Vec<&str>>();
+    let bits = skeleton.split('"').collect::<Vec<&str>>();
     let size = bits.len();
     let mut body = vec![String::new(); size];
     {
         let mut control = None;
         bits.into_iter().enumerate().for_each(|(index, bit)| {
             if bit.contains("ENDPOINT") {
+                let path = bit.replace("ENDPOINT", "");
                 control = Some(index);
-                body[index + 6] = heart.clone();
+                body[index + 6] = if path != "FIRELINK" { format!("{}/{}", heart.clone(), path.to_lowercase()) } else { heart.clone() };
                 body[index] = bit.to_string();
             }
 
