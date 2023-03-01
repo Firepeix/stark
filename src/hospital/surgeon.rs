@@ -1,12 +1,19 @@
 use std::{process::{Command, Stdio}, time::Duration};
 
 use color_eyre::{Result, Report};
+use lazy_static::lazy_static;
 use serde::Deserialize;
 use tokio::{sync::{broadcast::{Receiver, Sender}}};
 
 use crate::{controller::CommandMessage, google::{Manager, self}};
 
 use super::doctor::{Health, check_health};
+
+lazy_static! {
+    static ref NGROK_PATH: String = std::env::var("NGROK_PATH").unwrap();
+    static ref FIRST_ARGUMENT: String = std::env::args().nth(1).unwrap();
+    static ref SECOND_ARGUMENT: String =  std::env::args().nth(2).unwrap();
+}
 
 
 #[derive(Deserialize, Clone)]
@@ -23,7 +30,11 @@ pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessa
 
     tokio::spawn(async move { start_process(listener).await });
     
+    // Espera iniciar o Ngrok
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
     let heart = apply_shock(dispatcher).await;
+    
 
     patch(heart, pacient).await
 }
@@ -82,9 +93,9 @@ async fn handle_error(report: Report, dispatcher: Sender<CommandMessage>) -> ! {
 
 async fn start_process(mut listener: Receiver<CommandMessage>) {
     println!("Iniciando Ngrok");
-    let mut child = Command::new("./ngrok")
-        .arg("http")
-        .arg("8000")
+    let mut child = Command::new(NGROK_PATH.as_str())
+        .arg(FIRST_ARGUMENT.as_str())
+        .arg(SECOND_ARGUMENT.as_str())
         .stdout(Stdio::null())
         .spawn()
         .unwrap();

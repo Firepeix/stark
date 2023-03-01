@@ -1,4 +1,4 @@
-use std::{sync::Arc, path::{Path, PathBuf}, fs};
+use std::{path::{PathBuf}, fs};
 
 use chrono::{Local, Duration};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD as Base64};
@@ -6,7 +6,6 @@ use color_eyre::Result;
 use hmac_sha256::Hash as Sha256;
 use lazy_static::lazy_static;
 use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey, pkcs1::DecodeRsaPrivateKey};
-use tokio::sync::Mutex;
 
 static CREDENTIALS: & str = include_str!("../../credentials.json");
 

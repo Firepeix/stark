@@ -3,7 +3,6 @@ use std::time::Duration;
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use serde::{Deserialize};
-use tokio::time::Sleep;
 
 use super::authentication;
 
@@ -119,10 +118,11 @@ async fn update(skeleton: &str, force_authenticate: bool) -> Result<()>  {
 
 
     let result = client.put(endpoint)
-    .bearer_auth(token)
-    .body(String::from(skeleton))
-    .send()
-    .await;
+        .bearer_auth(token)
+        .header("If-Match", "*")
+        .body(String::from(skeleton))
+        .send()
+        .await;
 
     match result {
         Ok(response) => {

@@ -8,25 +8,24 @@ use std::time::Duration;
 use tokio::sync::broadcast::{Sender, Receiver};
 
 
-use crate::{google::Manager, hospital::doctor::{check_health, Health}, controller::CommandMessage};
+use crate::{google::{Manager, self}, hospital::doctor::{check_health, Health}, controller::CommandMessage};
 
 use self::surgeon::ressurect;
 
 
 pub(crate) async fn enter(pacient: Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) {
     ressurect(&pacient, dispatcher.clone(), listener).await.unwrap();
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    
-    observe(pacient, dispatcher).await;
+    observe(dispatcher).await;
 }
 
 
-async fn observe(manager: Manager, dispatcher: Sender<CommandMessage>) {
+async fn observe(dispatcher: Sender<CommandMessage>) {
     let mut retries = 0;
     loop {
-        println!("Checando saude de firelink");
-        match check_health(&format!("{}/health", &manager.get_patient())).await {
+        let manager = google::get_manager().await;
+        let endpoint = &format!("{}/health", &manager.get_patient());
+        println!("Checando saude de firelink - {endpoint}");
+        match check_health(endpoint).await {
             Health::Healthy => tokio::time::sleep(Duration::from_secs(30)).await,
             Health::Dead => {
                 println!("Firelink destruida");
@@ -42,8 +41,10 @@ async fn observe(manager: Manager, dispatcher: Sender<CommandMessage>) {
 
                 retries += 1;
 
-                // Estacionando para dar tempo do servidor subir
-                tokio::time::sleep(Duration::from_secs(5)).await
+                println!("Hospital - Aguardando Config Propagar");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                println!("Hospital - Tempo de espera realizado");
+
             },
         }
     }
