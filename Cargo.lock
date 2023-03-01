@@ -1178,6 +1178,7 @@ dependencies = [
  "chrono",
  "color-eyre",
  "hmac-sha256",
+ "lazy_static",
  "reqwest",
  "rsa",
  "serde",

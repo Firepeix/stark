@@ -14,7 +14,7 @@ use self::surgeon::ressurect;
 
 
 pub(crate) async fn enter(pacient: Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) {
-    ressurect(&pacient, dispatcher.clone(), listener).await;
+    ressurect(&pacient, dispatcher.clone(), listener).await.unwrap();
 
     tokio::time::sleep(Duration::from_secs(2)).await;
     
@@ -31,7 +31,7 @@ async fn observe(manager: Manager, dispatcher: Sender<CommandMessage>) {
             Health::Dead => {
                 println!("Firelink destruida");
                 
-                if retries >= 3 {
+                if retries >= 30 {
                     println!("Tentativas de ligar falharam");
                     break;
                 }
@@ -54,7 +54,9 @@ async fn observe(manager: Manager, dispatcher: Sender<CommandMessage>) {
 async fn kill_previous_tunnel(dispatcher: &Sender<CommandMessage>) {
     if tunnel_is_running().await {
         println!("Ngrok existente - Matando anterior");
-        dispatcher.send(CommandMessage::StopNgrok).unwrap();
+        if dispatcher.send(CommandMessage::StopNgrok).is_err() {
+            println!("Ngrok ja desligado")
+        }
         // Aguardando o tunnel morrer
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
@@ -66,7 +68,10 @@ async fn start_new_tunnel(pacient: &Manager, dispatcher: Sender<CommandMessage>,
         return;
     }
 
-    ressurect(pacient, dispatcher, listener).await
+    match ressurect(pacient, dispatcher.clone(), listener).await {
+        Ok(_) => {},
+        Err(_) => kill_previous_tunnel(&dispatcher).await,
+    }
 }
 
 

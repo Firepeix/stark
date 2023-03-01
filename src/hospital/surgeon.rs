@@ -4,7 +4,7 @@ use color_eyre::{Result, Report};
 use serde::Deserialize;
 use tokio::{sync::{broadcast::{Receiver, Sender}}};
 
-use crate::{controller::CommandMessage, google::Manager};
+use crate::{controller::CommandMessage, google::{Manager, self}};
 
 use super::doctor::{Health, check_health};
 
@@ -19,7 +19,7 @@ struct Tunnel {
     public_url: String
 }
 
-pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) {
+pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) -> Result<()> {
 
     tokio::spawn(async move { start_process(listener).await });
     
@@ -28,19 +28,9 @@ pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessa
     patch(heart, pacient).await
 }
 
-async fn patch(heart: String, pacient: &Manager) {
+async fn patch(heart: String, pacient: &Manager) -> Result<()> {
     let skeleton = insert_heart(heart, pacient.get_skeleton());
-    revive(skeleton).await
-}
-
-async fn revive(skeleton: String) {
-    let endpoint = "http://localhost:3001/v1/projects/ebisu-mobile/remoteConfig";
-    let client = reqwest::Client::new();
-    client.put(endpoint)
-      .body(skeleton)
-      .send()
-      .await
-      .unwrap();
+    google::update_manager(skeleton).await
 }
 
 fn insert_heart(heart: String, skeleton: String) -> String {
@@ -94,7 +84,7 @@ async fn start_process(mut listener: Receiver<CommandMessage>) {
     println!("Iniciando Ngrok");
     let mut child = Command::new("./ngrok")
         .arg("http")
-        .arg("80")
+        .arg("8000")
         .stdout(Stdio::null())
         .spawn()
         .unwrap();
@@ -120,23 +110,26 @@ async fn start_process(mut listener: Receiver<CommandMessage>) {
 async fn take_measure(tunnel: Tunnel) -> Result<String> {
     let mut retry = 0;
     let endpoint = format!("{}/health", &tunnel.public_url);
-    while retry < 3 {
+    while retry < 10 {
         let health = check_health(&endpoint).await;
+        println!("Verificando inicio do tunel");
         if let Health::Healthy = health {
             return Ok(tunnel.public_url)
         }
+
+        println!("Tunel - Não iniciou corretamente");
 
         // Esperando o servidor subir
         tokio::time::sleep(Duration::from_secs(3)).await;
         retry += 1;
     }
 
-    Err(color_eyre::eyre::eyre!("Tunnel não subiu em 3 tentativas"))
+    Err(color_eyre::eyre::eyre!("Tunnel não subiu em 10 tentativas"))
 
 }
 
 async fn get_tunnel() -> Result<Tunnel> {
-    let endpoint = "http://localhost:3000";
+    let endpoint = "http://localhost:4040";
     let response = reqwest::get(&format!("{endpoint}/api/tunnels"))
     .await?
     .json::<Tunnels>()
