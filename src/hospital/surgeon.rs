@@ -52,7 +52,7 @@ fn insert_heart(heart: String, skeleton: String) -> String {
         let mut control = None;
         bits.into_iter().enumerate().for_each(|(index, bit)| {
             if bit.contains("ENDPOINT") {
-                let path = bit.replace("ENDPOINT", "");
+                let path = bit.replace("_ENDPOINT", "");
                 control = Some(index);
                 body[index + 6] = if path != "FIRELINK" { format!("{}/{}", heart.clone(), path.to_lowercase()) } else { heart.clone() };
                 body[index] = bit.to_string();
