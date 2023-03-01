@@ -11,8 +11,6 @@ run-release $REMOTE_CONFIG_URL="https://firebaseremoteconfig.googleapis.com" $AU
     just run
 
 release:
-    cargo build --release
+    cargo build --release --target x86_64-unknown-linux-musl
     cp target/release/stark bin/stark  
 
-start $REMOTE_CONFIG_URL="https://firebaseremoteconfig.googleapis.com" $AUTHENTICATION_URL="https://oauth2.googleapis.com" $NGROK_PATH="ngrok" arg1 arg2:
-    ./bin/start {{arg1}} {{arg2}}
