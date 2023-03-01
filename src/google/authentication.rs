@@ -7,10 +7,9 @@ use hmac_sha256::Hash as Sha256;
 use lazy_static::lazy_static;
 use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey, pkcs1::DecodeRsaPrivateKey};
 
-static CREDENTIALS: & str = include_str!("../../credentials.json");
-
 lazy_static! {
     static ref AUTHENTICATION_ENDPOINT: String = std::env::var("AUTHENTICATION_URL").unwrap();
+    static ref CREDENTIALS: String = fs::read_to_string("credentials.json").unwrap();
 }
 
 type Signature = String;
@@ -69,7 +68,7 @@ impl AsRef<Credential> for Credential{
 }
 
 pub fn generate_request_jwt() -> String {
-    let credential = serde_json::from_str::<Credential>(CREDENTIALS).unwrap();
+    let credential = serde_json::from_str::<Credential>(CREDENTIALS.as_str()).unwrap();
     let token_info = TokenHeader {alg: "RS256".to_owned(), typ: "JWT".to_owned()};
     encode_jwt(credential, &token_info)
 }
