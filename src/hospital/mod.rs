@@ -14,7 +14,7 @@ use self::surgeon::ressurect;
 
 
 pub(crate) async fn enter(pacient: Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) {
-    ressurect(&pacient, dispatcher.clone(), listener).await.unwrap();
+    ressurect(&pacient, listener).await.unwrap();
     observe(dispatcher).await;
 }
 
@@ -23,8 +23,11 @@ async fn observe(dispatcher: Sender<CommandMessage>) {
     let mut retries = 0;
     loop {
         let manager = google::get_manager().await;
+
         let endpoint = &format!("{}/health", &manager.get_patient());
+        
         println!("Checando saude de firelink - {endpoint}");
+        
         match check_health(endpoint).await {
             Health::Healthy => tokio::time::sleep(Duration::from_secs(30)).await,
             Health::Dead => {
@@ -37,7 +40,7 @@ async fn observe(dispatcher: Sender<CommandMessage>) {
 
                 kill_previous_tunnel(&dispatcher).await;
 
-                start_new_tunnel(&manager, dispatcher.clone(), dispatcher.subscribe()).await;
+                start_new_tunnel(&manager, dispatcher.subscribe()).await;
 
                 retries += 1;
 
@@ -53,32 +56,11 @@ async fn observe(dispatcher: Sender<CommandMessage>) {
 }
 
 async fn kill_previous_tunnel(dispatcher: &Sender<CommandMessage>) {
-    if tunnel_is_running().await {
-        println!("Ngrok existente - Matando anterior");
-        if dispatcher.send(CommandMessage::StopNgrok).is_err() {
-            println!("Ngrok ja desligado")
-        }
-        // Aguardando o tunnel morrer
-        tokio::time::sleep(Duration::from_secs(1)).await;
+    if dispatcher.send(CommandMessage::StopNgrok).is_err() {
+        println!("Ngrok ja desligado")
     }
 }
 
-async fn start_new_tunnel(pacient: &Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) {
-    if tunnel_is_running().await {
-        println!("Ngrok existente - Não iniciando");
-        return;
-    }
-
-    match ressurect(pacient, dispatcher.clone(), listener).await {
-        Ok(_) => {},
-        Err(_) => kill_previous_tunnel(&dispatcher).await,
-    }
+async fn start_new_tunnel(pacient: &Manager, listener: Receiver<CommandMessage>) {
+    ressurect(pacient, listener).await.unwrap();
 }
-
-
-
-async fn tunnel_is_running() -> bool {
-    let status = check_health("http://localhost:4040/api/tunnels").await;
-    matches!(status, Health::Healthy)
-}
-
