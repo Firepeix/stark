@@ -1,9 +1,9 @@
-use std::{process::{Command, Stdio}, time::Duration};
+use std::{process::{Command, Stdio}, time::Duration, io::ErrorKind, error::Error};
 
 use color_eyre::{Result, Report};
 use lazy_static::lazy_static;
-use serde::Deserialize;
-use tokio::{sync::{broadcast::{Receiver, Sender}}};
+use ngrok::{tunnel::{HttpTunnel, UrlTunnel}, prelude::{TunnelBuilder, TunnelExt}, Tunnel, Session};
+use tokio::{sync::{broadcast::{Receiver, Sender, error::TryRecvError}, oneshot::channel}};
 
 use crate::{controller::CommandMessage, google::{Manager, self}};
 
@@ -16,17 +16,17 @@ lazy_static! {
 }
 
 
-#[derive(Deserialize, Clone)]
-struct Tunnels {
-    tunnels: Vec<Tunnel>
-}
-
-#[derive(Deserialize, Clone)]
-struct Tunnel {
-    public_url: String
-}
-
 pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) -> Result<()> {
+
+    let tunnel = start_process(listener).await?;
+    
+    let heart = apply_shock(tunnel).await;
+    
+
+    patch(heart, pacient).await
+}
+
+/*pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessage>, listener: Receiver<CommandMessage>) -> Result<()> {
 
     tokio::spawn(async move { start_process(listener).await });
     
@@ -37,7 +37,7 @@ pub(crate) async fn ressurect(pacient: &Manager, dispatcher: Sender<CommandMessa
     
 
     patch(heart, pacient).await
-}
+}*/
 
 async fn patch(heart: String, pacient: &Manager) -> Result<()> {
     let skeleton = insert_heart(heart, pacient.get_skeleton());
@@ -75,7 +75,30 @@ fn insert_heart(heart: String, skeleton: String) -> String {
     body.join("\"")
 }
 
-async fn apply_shock(dispatcher: Sender<CommandMessage>) -> String {
+
+async fn apply_shock(mut tunnel: HttpTunnel) -> String {
+    let url = tunnel.url().to_owned();
+    let fowards = tunnel.forwards_to().to_owned();
+
+
+    tokio::spawn(async move {
+        println!("Redirecionando para: {fowards}");
+
+        if let Err(error) = tunnel.forward_http(fowards).await {
+            let ErrorKind::NotConnected = error.kind() else {
+                Err(error).unwrap()
+            };
+        }
+
+    });
+
+    take_measure(&url).await.unwrap();
+
+    url
+}
+
+
+/*async fn apply_shock() -> String {
     match get_tunnel().await {
         Ok(tunnel) => match take_measure(tunnel).await {
             Ok(firelink_endpoint) => firelink_endpoint,
@@ -83,15 +106,59 @@ async fn apply_shock(dispatcher: Sender<CommandMessage>) -> String {
         },
         Err(report) => handle_error(report, dispatcher).await,
     }
+}*/
+
+async fn start_process(mut manager: Receiver<CommandMessage>) -> Result<HttpTunnel> {
+    println!("Iniciando Ngrok");
+    
+
+    let mut session = ngrok::Session::builder()
+        .authtoken_from_env()
+        .connect()
+        .await?;
+
+    let listener = listen(&session).await?;
+
+    tokio::spawn(async move {
+        loop {
+            match manager.try_recv() {
+                Ok(_) => {
+                    session.close().await.unwrap();
+                    break;
+                },
+                Err(error) => {
+                    if let TryRecvError::Closed = error {
+                        break;
+                    }
+                },
+            }
+        }
+    });
+
+   
+
+
+    Ok(listener)
 }
 
-async fn handle_error(report: Report, dispatcher: Sender<CommandMessage>) -> ! {
-    dispatcher.send(CommandMessage::StopNgrok).unwrap();
-    // Dormindo para dar tempo da mensagem chegar nos listeners
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    Err(report).unwrap()
+async fn listen(session: &Session) -> Result<HttpTunnel> {
+    let forwards_to = "localhost:8080";
+    
+    
+    let listener = session
+        .http_endpoint()
+        .forwards_to(forwards_to)
+        .listen()
+        .await?;
+
+    println!("Ponto de entrada: {:?}", listener.url());
+
+    tokio::time::sleep(Duration::from_secs(30)).await;
+
+    Ok(listener)
 }
 
+/*
 async fn start_process(mut listener: Receiver<CommandMessage>) {
     println!("Iniciando Ngrok");
     let mut child = Command::new(NGROK_PATH.as_str())
@@ -117,9 +184,34 @@ async fn start_process(mut listener: Receiver<CommandMessage>) {
         // Dormindo para não gastar ciclos no CPU
         tokio::time::sleep(Duration::from_secs(1)).await;
     }    
+}*/
+
+async fn take_measure(tunnel: &str) -> Result<String> {
+    let mut retry = 0;
+    
+    let endpoint = format!("{}/health", tunnel);
+    
+    while retry < 10 {
+        let health = check_health(&endpoint).await;
+        
+        println!("Verificando inicio do tunel");
+        
+        if let Health::Healthy = health {
+            return Ok(tunnel.to_owned())
+        }
+
+        println!("Tunel - Não iniciou corretamente");
+
+        // Esperando o servidor subir
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        retry += 1;
+    }
+
+    Err(color_eyre::eyre::eyre!("Tunnel não subiu em 10 tentativas"))
+
 }
 
-async fn take_measure(tunnel: Tunnel) -> Result<String> {
+/*async fn take_measure(tunnel: Tunnel) -> Result<String> {
     let mut retry = 0;
     let endpoint = format!("{}/health", &tunnel.public_url);
     while retry < 10 {
@@ -138,9 +230,9 @@ async fn take_measure(tunnel: Tunnel) -> Result<String> {
 
     Err(color_eyre::eyre::eyre!("Tunnel não subiu em 10 tentativas"))
 
-}
+} */
 
-async fn get_tunnel() -> Result<Tunnel> {
+/*async fn get_tunnel() -> Result<Tunnel> {
     let endpoint = "http://localhost:4040";
     let response = reqwest::get(&format!("{endpoint}/api/tunnels"))
     .await?
@@ -152,4 +244,4 @@ async fn get_tunnel() -> Result<Tunnel> {
     }
 
     Ok(response.tunnels.first().unwrap().clone())
-}
+}*/

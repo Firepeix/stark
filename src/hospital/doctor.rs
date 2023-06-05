@@ -10,10 +10,15 @@ pub enum Health {
 }
 
 pub async fn check_health(endpoint: &str) -> Health {
-    match probe(endpoint).await {
+    println!("Verificando: {}", &endpoint);
+    let result = match probe(endpoint).await {
         Ok(StatusCode::OK) => Health::Healthy,
         _ => Health::Dead
-    }
+    };
+
+    println!("Status: {:?}", result);
+
+    result
 }
 
 async fn probe(endpoint: &str) -> Result<StatusCode> {

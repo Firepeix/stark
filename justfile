@@ -10,9 +10,6 @@ run-release-local $REMOTE_CONFIG_URL="http://192.168.0.11:3000" $AUTHENTICATION_
 run-release $REMOTE_CONFIG_URL="https://firebaseremoteconfig.googleapis.com" $AUTHENTICATION_URL="https://oauth2.googleapis.com" $NGROK_PATH="./ngrok":
     just run
 
-#release $RUSTFLAGS="-Ctarget-feature=+crt-static":
-#    cargo build --target x86_64-unknown-linux-musl --release 
-#    cp target/release/stark bin/stark  
 release:
     cp -r ./src ../RustCompiler/package/
     cp -r ./Cargo.lock ../RustCompiler/package/
