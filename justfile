@@ -2,7 +2,7 @@ help:
     @just --list
 
 run:
-    cargo build; cargo run -- 8000;    
+    cargo build; cargo run -- 8080;    
 
 run-release-local $REMOTE_CONFIG_URL="http://192.168.0.11:3000" $AUTHENTICATION_URL="http://192.168.0.11:3000" $NGROK_PATH="./ngrok":
     just run

@@ -127,8 +127,6 @@ async fn listen(session: &Session) -> Result<HttpTunnel> {
 
     println!("Ponto de entrada: {:?}", listener.url());
 
-    tokio::time::sleep(Duration::from_secs(30)).await;
-
     Ok(listener)
 }
 
