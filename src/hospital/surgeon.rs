@@ -10,9 +10,7 @@ use crate::{controller::CommandMessage, google::{Manager, self}};
 use super::doctor::{Health, check_health};
 
 lazy_static! {
-    static ref NGROK_PATH: String = std::env::var("NGROK_PATH").unwrap();
     static ref FIRST_ARGUMENT: String = std::env::args().nth(1).unwrap();
-    static ref SECOND_ARGUMENT: String =  std::env::args().nth(2).unwrap();
 }
 
 
@@ -118,7 +116,7 @@ async fn start_process(mut manager: Receiver<CommandMessage>) -> Result<HttpTunn
 }
 
 async fn listen(session: &Session) -> Result<HttpTunnel> {
-    let forwards_to = "localhost:8080";
+    let forwards_to = format!("localhost:{}", FIRST_ARGUMENT.as_str());
     
     
     let listener = session
